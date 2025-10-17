@@ -23,7 +23,7 @@ def login_view():
         if rec and verify_password(pwd, rec["salt"], rec["hash"]):
             st.session_state.user = {"email": email, "role": rec["role"]}
             st.success(f"Bienvenida/o: {email} — rol: {rec['role']}")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Usuario o contraseña incorrectos")
 
