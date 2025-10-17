@@ -85,7 +85,7 @@ USERS = {
 COLUMNS = [
     "Folio", "Fecha_Registro", "Fecha_Programada", "Costo_MXN",
     # Datos del paciente
-    "Nombre_enc", "Edad", "Genero", "Telefono_enc", "Direccion_enc",
+    "Nombre_enc", "Edad", "Genero", "Telefono_enc", "Direccion_enc", "Emails_enc",
     # Orden / resultados
     "Tipo_Estudio", "Observaciones_enc", "Resultados_enc",
     "Estado"  # pendiente|capturado|firmado
@@ -122,11 +122,12 @@ def decrypt_view(df: pd.DataFrame) -> pd.DataFrame:
     out["Nombre"]    = out["Nombre_enc"].apply(dec)
     out["Telefono"]  = out["Telefono_enc"].apply(dec)
     out["Direccion"] = out["Direccion_enc"].apply(dec)
+    out["Emails"]    = out["Emails_enc"].apply(dec) if "Emails_enc" in out.columns else ""
     out["Observaciones"] = out["Observaciones_enc"].apply(dec)
     out["Resultados"]    = out["Resultados_enc"].apply(dec)
     cols = [
         "Folio","Fecha_Registro","Fecha_Programada","Costo_MXN",
-        "Nombre","Edad","Genero","Telefono","Direccion","Tipo_Estudio",
+        "Nombre","Edad","Genero","Telefono","Direccion","Emails","Tipo_Estudio",
         "Observaciones","Resultados","Estado"
     ]
     return out.reindex(columns=cols)
@@ -168,7 +169,7 @@ def get_order_summary(folio: str):
 # Catálogo de estudios (recortado/ajustable)
 def save_order(
     folio, fecha_prog, costo, nombre, edad, genero, telefono, direccion,
-    tipo, observaciones
+    tipo, observaciones, emails=None
 ):
     df = read_csv()
     # normaliza tipo(s) a string unificado
@@ -176,6 +177,12 @@ def save_order(
         tipo_str = "; ".join([t for t in tipo if t])
     else:
         tipo_str = str(tipo or "").strip()
+
+    # Procesar emails
+    if emails:
+        emails_str = "; ".join(emails)
+    else:
+        emails_str = ""
 
     row = {
         "Folio": folio or folio_auto(),
@@ -187,6 +194,7 @@ def save_order(
         "Genero": genero,
         "Telefono_enc": enc(normalizar_telefono_mx(telefono)),
         "Direccion_enc": enc((direccion or "").strip()),
+        "Emails_enc": enc(emails_str),
         "Tipo_Estudio": tipo_str,
         "Observaciones_enc": enc((observaciones or "").strip()),
         "Resultados_enc": enc(""),
@@ -246,3 +254,4 @@ def costo_total_desde_catalogo(nombres_estudios):
         return 0.0
     sel = df[df["Nombre"].isin(nombres_estudios)]
     return float(sel["Precio_MXN"].fillna(0).sum())
+
