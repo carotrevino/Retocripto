@@ -78,7 +78,7 @@ with tabs[0]:
                 telefono = st.text_input("Teléfono")
                 direccion = st.text_input("Dirección")
                 tipo = st.multiselect(
-                    "Estudios", lista_estudios(), defauwhlt=[])
+                    "Estudios", lista_estudios(), default=[])
             auto_cost = st.checkbox("Calcular costo automático desde catálogo")
             observaciones = st.text_area("Observaciones", height=90)
             submitted = st.form_submit_button("Guardar paciente + solicitud")
