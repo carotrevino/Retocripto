@@ -255,3 +255,145 @@ def costo_total_desde_catalogo(nombres_estudios):
     sel = df[df["Nombre"].isin(nombres_estudios)]
     return float(sel["Precio_MXN"].fillna(0).sum())
 
+# --------------------------
+# Folio de Resultados
+# --------------------------
+
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
+from pathlib import Path
+import json
+from datetime import datetime
+
+TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+BG_PATH = TEMPLATES_DIR / "labza_bg.png"
+COORDS_PATH = TEMPLATES_DIR / "coords_labza.json"
+
+def _load_coords():
+    if COORDS_PATH.exists():
+        return json.loads(COORDS_PATH.read_text(encoding="utf-8"))
+    # Coord por defecto (puedes ajustar luego con pruebas)
+    return {
+        "paciente": [30*mm, 256*mm],
+        "edad":     [108*mm, 256*mm],
+        "sexo":     [137*mm, 256*mm],
+        "fecha":    [158*mm, 256*mm],
+        "folio":    [190*mm, 256*mm],
+        "medico":   [30*mm, 245*mm],
+        "analisis": [30*mm, 235*mm],
+        # Química sanguínea (ejemplos)
+        "GLUC": [30*mm, 215*mm],
+        "BUN":  [52*mm, 215*mm],
+        "CREAT":[74*mm, 215*mm],
+        "UREA": [98*mm, 215*mm],
+        "AC_URICO":[122*mm,215*mm],
+        "Na":   [146*mm,215*mm],
+        "K":    [166*mm,215*mm],
+        "Cl":   [184*mm,215*mm],
+        "Ca":   [204*mm,215*mm],
+        # ...continúa mapeando el resto según necesites
+    }
+
+def _draw_text(c, x, y, text, size=9):
+    c.setFont("Helvetica", size)
+    c.drawString(float(x), float(y), str(text))
+
+def generate_labza_pdf(data: dict, out_path: Path | None = None) -> Path:
+    """
+    data: dict con claves como 'paciente','edad','sexo','fecha','folio','medico','analisis',
+          y analitos: 'GLUC','BUN','CREAT','UREA','AC_URICO','Na','K','Cl','Ca', ...
+    out_path: ruta de salida opcional.
+    """
+    coords = _load_coords()
+    if out_path is None:
+        out_path = Path.cwd() / f"LABZA_{data.get('folio','sin_folio')}.pdf"
+
+    c = canvas.Canvas(str(out_path), pagesize=letter)
+    width, height = letter
+
+    # Fondo
+    if BG_PATH.exists():
+        bg = ImageReader(str(BG_PATH))
+        c.drawImage(bg, 0, 0, width=width, height=height)
+
+    # Valores
+    def put(key, fallback=""):
+        if key in coords and data.get(key) not in (None, ""):
+            x, y = coords[key]
+            _draw_text(c, x, y, data.get(key, fallback))
+
+    # Encabezado
+    put("paciente")
+    put("edad")
+    put("sexo")
+    put("fecha", datetime.now().strftime("%d/%m/%Y"))
+    put("folio")
+    put("medico")
+    put("analisis")
+
+    # Analitos (solo si existen en data)
+    for k in data.keys():
+        if k in coords and k not in {"paciente","edad","sexo","fecha","folio","medico","analisis"}:
+            put(k)
+
+    c.showPage()
+    c.save()
+    return out_path
+
+
+# ============================================================
+#             Generador de formato PDF LABZA 
+# ============================================================
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
+from pathlib import Path
+import json
+from datetime import datetime
+
+TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+BG_PATH = TEMPLATES_DIR / "labza_bg.png"
+COORDS_PATH = TEMPLATES_DIR / "coords_labza.json"
+
+def _load_coords():
+    if COORDS_PATH.exists():
+        return json.loads(COORDS_PATH.read_text(encoding="utf-8"))
+    return {}  # si no hay JSON, no rompe
+
+def _draw_text(c, x, y, text, size=9):
+    c.setFont("Helvetica", size)
+    c.drawString(float(x), float(y), str(text))
+
+def generate_labza_pdf(data: dict, out_path: Path | None = None) -> Path:
+    """Genera un PDF con el formato LABZA y devuelve la ruta del archivo."""
+    out_path = out_path or (Path.cwd() / f"LABZA_{data.get('folio','sin_folio')}.pdf")
+    c = canvas.Canvas(str(out_path), pagesize=letter)
+    width, height = letter
+
+    # fondo
+    if BG_PATH.exists():
+        c.drawImage(ImageReader(str(BG_PATH)), 0, 0, width=width, height=height)
+
+    coords = _load_coords()
+    base_keys = ["paciente","edad","sexo","fecha","folio","medico","analisis"]
+    data = {**data}
+    data.setdefault("fecha", datetime.now().strftime("%d/%m/%Y"))
+
+    for k in base_keys:
+        if k in coords and data.get(k) not in (None, ""):
+            x, y = coords[k]
+            _draw_text(c, x, y, data[k])
+
+    for k, v in data.items():
+        if k not in base_keys and k in coords and v not in (None, ""):
+            x, y = coords[k]
+            _draw_text(c, x, y, v)
+
+    c.showPage()
+    c.save()
+    return out_path
+
+
+

@@ -3,3 +3,6 @@ pandas
 openpyxl
 cryptography
 python-dotenv
+reportlab
+Pillow
+

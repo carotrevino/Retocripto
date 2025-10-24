@@ -10,6 +10,17 @@ from app_core import (
 
 st.set_page_config(page_title="Consultorio | Criptografía segura", page_icon="🔐", layout="wide")
 
+from app_core import (
+    USERS, verify_password, make_user,
+    lista_estudios, list_folios, get_order_summary,
+    save_order, save_results, read_csv, decrypt_view, filter_df, export_excel,
+    generate_labza_pdf,   
+)
+import json  
+from datetime import date  
+from pathlib import Path
+
+
 # --- Auth (simple en memoria) ---
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -63,7 +74,7 @@ with tabs[0]:
             with col3:
                 telefono   = st.text_input("Teléfono")
                 direccion  = st.text_input("Dirección")
-                tipo       = st.multiselect("Estudios", lista_estudios(), default=[])
+                tipo       = st.multiselect("Estudios", lista_estudios(), defauwhlt=[])
             auto_cost = st.checkbox("Calcular costo automático desde catálogo")
             observaciones = st.text_area("Observaciones", height=90)
             submitted = st.form_submit_button("Guardar paciente + solicitud")
@@ -113,13 +124,83 @@ with tabs[1]:
                     if ok: st.success("Resultados guardados (estado: capturado)")
                 except Exception as e:
                     st.error(f"Error: {e}")
-        with c2:
-            if st.button("Firmar y liberar"):
-                try:
-                    ok = save_results(st.session_state.get("folio_loaded",""), resultados, liberar=True)
-                    if ok: st.success("Orden firmada (estado: firmado)")
+        with c2:F
+        if st.button("Firmar y liberar"):
+            try:
+                ok = save_results(st.session_state.get("folio_loaded",""), resultados, liberar=True)
+                if ok: st.success("Orden firmada (estado: firmado)")
                 except Exception as e:
                     st.error(f"Error: {e}")
+
+        # ======== Formato LABZA (PDF) ========
+st.markdown("### 🧾 Formato LABZA (PDF)")
+
+# Solo si hay folio cargado y ya se cargó el resumen
+folio_loaded = st.session_state.get("folio_loaded")
+if folio_loaded:
+    info = get_order_summary(folio_loaded)
+    if info:
+        # Arma el diccionario de datos para el PDF
+        # (ajusta las llaves a las que uses realmente en tu Excel / JSON)
+        data = {
+            "paciente": info.get("Nombre", ""),
+            "edad": info.get("Edad", ""),
+            "sexo": info.get("Género", info.get("Genero","")),
+            "fecha": date.today().strftime("%d/%m/%Y"),
+            "folio": folio_loaded,
+            "medico": info.get("Medico",""),
+            "analisis": ", ".join(info.get("Tipo_Estudio", [])) if isinstance(info.get("Tipo_Estudio"), list) else info.get("Tipo_Estudio",""),
+        }
+
+        # Si el área de texto 'resultados' contiene JSON válido, úsalo para rellenar analitos
+        _raw = st.session_state.get("resultados", "") or ""
+        try:
+            parsed = json.loads(_raw) if _raw else {}
+        except Exception:
+            parsed = {}
+
+        # Mapea nombres del JSON a campos del formato (ajusta a tus claves reales)
+        mapping = {
+            "glucosa": "GLUC",
+            "bun": "BUN",
+            "creatinina": "CREAT",
+            "urea": "UREA",
+            "acido_urico": "AC_URICO",
+            "sodio": "Na",
+            "potasio": "K",
+            "cloro": "Cl",
+            "calcio": "Ca",
+            # ... añade todos los que necesites
+        }
+        for k_json, k_pdf in mapping.items():
+            if k_json in parsed and parsed[k_json] not in (None, ""):
+                data[k_pdf] = parsed[k_json]
+
+        # Botón para generar y descargar
+        if st.button("Generar PDF LABZA", key="btn_pdf"):
+            pdf_path = generate_labza_pdf(data)  # crea el PDF en disco
+            with open(pdf_path, "rb") as f:
+                st.download_button(
+                    label="Descargar PDF",
+                    data=f.read(),
+                    file_name=Path(pdf_path).name,
+                    mime="application/pdf",
+                    key="dl_pdf",
+                )
+            st.success("PDF creado. Al imprimir usa **Tamaño real / 100%**.")
+    else:
+        st.info("Carga un folio válido para generar el PDF.")
+else:
+    st.info("Primero selecciona y carga un folio.")
+
+resultados = st.text_area(
+    "Resultados (texto o JSON)", height=200,
+    placeholder='{"glucosa": 90, "obs":"ayuno 8h"}',
+    key="resultados"   # <-- añade esto
+)
+
+
+
 
 # ========== Consultas / Reportes ==========
 with tabs[2]:
@@ -159,3 +240,9 @@ with tabs[3]:
         st.markdown("**Usuarios actuales (solo memoria de ejecución):**")
         data = [{"email": e, "role": USERS[e]["role"]} for e in sorted(USERS.keys())]
         st.dataframe(pd.DataFrame(data), use_container_width=True, height=200)
+
+
+
+
+
+    
