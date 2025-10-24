@@ -1,4 +1,7 @@
 # streamlit_app.py
+from datetime import date
+import json
+from pathlib import Path
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
@@ -8,27 +11,19 @@ from app_core import (
     save_order, save_results, read_csv, decrypt_view, filter_df, export_excel
 )
 
-st.set_page_config(page_title="Consultorio | Criptografía segura", page_icon="🔐", layout="wide")
-
-from app_core import (
-    USERS, verify_password, make_user,
-    lista_estudios, list_folios, get_order_summary,
-    save_order, save_results, read_csv, decrypt_view, filter_df, export_excel,
-    generate_labza_pdf,   
-)
-import json  
-from datetime import date  
-from pathlib import Path
+st.set_page_config(
+    page_title="Consultorio | Criptografía segura", page_icon="🔐", layout="wide")
 
 
 # --- Auth (simple en memoria) ---
 if "user" not in st.session_state:
     st.session_state.user = None
 
+
 def login_view():
     st.subheader("Iniciar sesión")
     email = st.text_input("Correo", value="recep@lab.local")
-    pwd   = st.text_input("Contraseña", type="password", value="recep123")
+    pwd = st.text_input("Contraseña", type="password", value="recep123")
     if st.button("Entrar", type="primary"):
         rec = USERS.get(email)
         if rec and verify_password(pwd, rec["salt"], rec["hash"]):
@@ -38,10 +33,14 @@ def login_view():
         else:
             st.error("Usuario o contraseña incorrectos")
 
+
 def logout_button():
-    st.sidebar.button("Cerrar sesión", on_click=lambda: st.session_state.update(user=None))
+    st.sidebar.button(
+        "Cerrar sesión", on_click=lambda: st.session_state.update(user=None))
     if st.session_state.user:
-        st.sidebar.success(f"👋 {st.session_state.user['email']} ({st.session_state.user['role']})")
+        st.sidebar.success(
+            f"👋 {st.session_state.user['email']} ({st.session_state.user['role']})")
+
 
 # --- Layout principal ---
 st.title("🔐 Consultorio | Gestión segura")
@@ -65,16 +64,21 @@ with tabs[0]:
             col1, col2, col3 = st.columns(3)
             with col1:
                 folio = st.text_input("Folio (opcional)", placeholder="auto")
-                fecha_prog = st.date_input("Fecha programada", value=date.today())
-                costo = st.number_input("Costo (MXN)", min_value=0.0, step=50.0)
+                fecha_prog = st.date_input(
+                    "Fecha programada", value=date.today())
+                costo = st.number_input(
+                    "Costo (MXN)", min_value=0.0, step=50.0)
             with col2:
                 nombre = st.text_input("Nombre del paciente")
-                edad   = st.number_input("Edad", min_value=0, max_value=120, step=1)
-                genero = st.selectbox("Género", ["F","M","Otro","No especifica"])
+                edad = st.number_input(
+                    "Edad", min_value=0, max_value=120, step=1)
+                genero = st.selectbox(
+                    "Género", ["F", "M", "Otro", "No especifica"])
             with col3:
-                telefono   = st.text_input("Teléfono")
-                direccion  = st.text_input("Dirección")
-                tipo       = st.multiselect("Estudios", lista_estudios(), defauwhlt=[])
+                telefono = st.text_input("Teléfono")
+                direccion = st.text_input("Dirección")
+                tipo = st.multiselect(
+                    "Estudios", lista_estudios(), defauwhlt=[])
             auto_cost = st.checkbox("Calcular costo automático desde catálogo")
             observaciones = st.text_area("Observaciones", height=90)
             submitted = st.form_submit_button("Guardar paciente + solicitud")
@@ -85,7 +89,8 @@ with tabs[0]:
                     from app_core import costo_total_desde_catalogo
                     costo = costo_total_desde_catalogo(tipo)
                 folio_final = save_order(
-                    folio, str(fecha_prog), costo, nombre, edad, genero, telefono, direccion, tipo, observaciones
+                    folio, str(
+                        fecha_prog), costo, nombre, edad, genero, telefono, direccion, tipo, observaciones
                 )
                 st.success(f"Guardado folio: {folio_final}")
             except Exception as e:
@@ -93,14 +98,15 @@ with tabs[0]:
 
 # ========== Laboratorio ==========
 with tabs[1]:
-    if st.session_state.user["role"] not in ("lab","medico","admin"):
+    if st.session_state.user["role"] not in ("lab", "medico", "admin"):
         st.info("No tienes permisos para esta sección.")
     else:
         st.subheader("🧪 Captura de resultados")
-        cols = st.columns([2,1])
+        cols = st.columns([2, 1])
         with cols[0]:
             folios = list_folios()  # puedes filtrar por estado si deseas
-            folio_sel = st.selectbox("Selecciona folio", ["—"] + folios, index=0)
+            folio_sel = st.selectbox("Selecciona folio", [
+                                     "—"] + folios, index=0)
             if st.button("Cargar orden"):
                 st.session_state["folio_loaded"] = folio_sel if folio_sel != "—" else None
 
@@ -108,29 +114,36 @@ with tabs[1]:
             if folio_loaded:
                 info = get_order_summary(folio_loaded)
                 if info:
-                    st.markdown(f"**Paciente:** {info['Nombre']} — **Estado:** {info['Estado']}")
+                    st.markdown(
+                        f"**Paciente:** {info['Nombre']} — **Estado:** {info['Estado']}")
                     st.markdown(f"**Estudios:** {info['Tipo_Estudio']}")
                 else:
                     st.warning("Folio no encontrado")
         with cols[1]:
             st.write(" ")
 
-        resultados = st.text_area("Resultados (texto o JSON)", height=200, placeholder='{"glucosa": 90, "obs":"ayuno 8h"}')
+        resultados = st.text_area(
+            "Resultados (texto o JSON)", height=200, placeholder='{"glucosa": 90, "obs":"ayuno 8h"}')
         c1, c2 = st.columns(2)
         with c1:
             if st.button("Guardar resultados"):
                 try:
-                    ok = save_results(st.session_state.get("folio_loaded",""), resultados, liberar=False)
-                    if ok: st.success("Resultados guardados (estado: capturado)")
+                    ok = save_results(st.session_state.get(
+                        "folio_loaded", ""), resultados, liberar=False)
+                    if ok:
+                        st.success("Resultados guardados (estado: capturado)")
                 except Exception as e:
                     st.error(f"Error: {e}")
-        with c2:F
+        with c2:
+            F
         if st.button("Firmar y liberar"):
             try:
-                ok = save_results(st.session_state.get("folio_loaded",""), resultados, liberar=True)
-                if ok: st.success("Orden firmada (estado: firmado)")
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                ok = save_results(st.session_state.get(
+                    "folio_loaded", ""), resultados, liberar=True)
+                if ok:
+                    st.success("Orden firmada (estado: firmado)")
+            except Exception as e:
+                st.error(f"Error: {e}")
 
         # ======== Formato LABZA (PDF) ========
 st.markdown("### 🧾 Formato LABZA (PDF)")
@@ -145,11 +158,11 @@ if folio_loaded:
         data = {
             "paciente": info.get("Nombre", ""),
             "edad": info.get("Edad", ""),
-            "sexo": info.get("Género", info.get("Genero","")),
+            "sexo": info.get("Género", info.get("Genero", "")),
             "fecha": date.today().strftime("%d/%m/%Y"),
             "folio": folio_loaded,
-            "medico": info.get("Medico",""),
-            "analisis": ", ".join(info.get("Tipo_Estudio", [])) if isinstance(info.get("Tipo_Estudio"), list) else info.get("Tipo_Estudio",""),
+            "medico": info.get("Medico", ""),
+            "analisis": ", ".join(info.get("Tipo_Estudio", [])) if isinstance(info.get("Tipo_Estudio"), list) else info.get("Tipo_Estudio", ""),
         }
 
         # Si el área de texto 'resultados' contiene JSON válido, úsalo para rellenar analitos
@@ -200,8 +213,6 @@ resultados = st.text_area(
 )
 
 
-
-
 # ========== Consultas / Reportes ==========
 with tabs[2]:
     st.subheader("🔎 Búsqueda y exportación")
@@ -226,7 +237,8 @@ with tabs[3]:
             with col2:
                 email = st.text_input("Correo")
             with col3:
-                role = st.selectbox("Rol", ["recepcion","lab","medico","admin"])
+                role = st.selectbox(
+                    "Rol", ["recepcion", "lab", "medico", "admin"])
             pwd = st.text_input("Contraseña", type="password")
             submitted_u = st.form_submit_button("Crear/Actualizar usuario")
         if submitted_u:
@@ -238,11 +250,6 @@ with tabs[3]:
 
         # Tabla simple
         st.markdown("**Usuarios actuales (solo memoria de ejecución):**")
-        data = [{"email": e, "role": USERS[e]["role"]} for e in sorted(USERS.keys())]
+        data = [{"email": e, "role": USERS[e]["role"]}
+                for e in sorted(USERS.keys())]
         st.dataframe(pd.DataFrame(data), use_container_width=True, height=200)
-
-
-
-
-
-    

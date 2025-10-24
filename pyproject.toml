@@ -14,7 +14,8 @@ dependencies = [
   "streamlit",
   "pandas",
   "openpyxl",
-  "cryptography"
+  "cryptography",
+  "reportlab",
 ]
 
 [tool.setuptools]

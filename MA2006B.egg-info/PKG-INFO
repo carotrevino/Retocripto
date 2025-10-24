@@ -8,3 +8,4 @@ Requires-Dist: streamlit
 Requires-Dist: pandas
 Requires-Dist: openpyxl
 Requires-Dist: cryptography
+Requires-Dist: reportlab
