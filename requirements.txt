@@ -1,8 +1,0 @@
-streamlit==1.38.0
-pandas
-openpyxl
-cryptography
-python-dotenv
-reportlab
-Pillow
-
