@@ -132,6 +132,60 @@ with tabs[1]:
                     st.warning("Folio no encontrado")
         with cols[1]:
             st.write(" ")
+            
+        # Opciones de descargar/subir formato PDF de resultados
+        st.markdown("---")
+        st.subheader("📄 Formato de Resultados (PDF)")
+        pdf_cols = st.columns([2, 2, 2])
+        
+        # Botón descargar formato
+        with pdf_cols[0]:
+            if os.path.exists("Formato Resultados.pdf"):
+                with open("Formato Resultados.pdf", "rb") as f:
+                    st.download_button(
+                        label="📥 Descargar Formato",
+                        data=f.read(),
+                        file_name="Formato Resultados.pdf",
+                        mime="application/pdf"
+                    )
+            else:
+                st.warning("Archivo de formato no disponible")
+        
+        # Uploader para cargar PDF completado
+        with pdf_cols[1]:
+            pdf_file = st.file_uploader("📤 Cargar PDF de resultados", type=["pdf"], key="pdf_uploader")
+            if pdf_file is not None and st.session_state.get("folio_loaded"):
+                if st.button("Guardar PDF", key="save_pdf_btn"):
+                    try:
+                        os.makedirs("resultados_pdf", exist_ok=True)
+                        folio_loaded = st.session_state.get("folio_loaded")
+                        pdf_path = os.path.join("resultados_pdf", f"{folio_loaded}.pdf")
+                        with open(pdf_path, "wb") as f:
+                            f.write(pdf_file.getbuffer())
+                        st.success(f"PDF guardado para folio {folio_loaded}")
+                    except Exception as e:
+                        st.error(f"Error al guardar PDF: {e}")
+            elif pdf_file is not None and not st.session_state.get("folio_loaded"):
+                st.warning("Carga primero un folio para asociar el PDF")
+        
+        # Mostrar PDF cargado si existe
+        with pdf_cols[2]:
+            folio_loaded = st.session_state.get("folio_loaded")
+            if folio_loaded:
+                pdf_path = os.path.join("resultados_pdf", f"{folio_loaded}.pdf")
+                if os.path.exists(pdf_path):
+                    st.success("✅ PDF cargado para este folio")
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            label="📥 Descargar PDF guardado",
+                            data=f.read(),
+                            file_name=f"{folio_loaded}.pdf",
+                            mime="application/pdf"
+                        )
+                else:
+                    st.info("No hay PDF cargado para este folio")
+        
+        st.markdown("---")
 
         resultados = st.text_area("Resultados (texto o JSON)", height=200, placeholder='{"glucosa": 90, "obs":"ayuno 8h"}')
         c1, c2 = st.columns(2)
